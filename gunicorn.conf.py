@@ -1,4 +1,4 @@
-def setup_context():
+def setup_context(): # work around a bug in zmq, python dies if zmq.Context is called more than once
     if 'zmq_context' not in __builtins__:
         __builtins__['zmq_context'] = zmq.Context()
 
