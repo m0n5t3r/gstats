@@ -1,0 +1,43 @@
+#!/usr/bin/python
+
+import urllib2
+import sys
+import os
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+
+def getServerStatus():
+    host = os.environ.get("host", "127.0.0.1")
+    port = 2345
+    raw = urllib2.urlopen( "http://%s:%d/_status" % (host, port) ).read()
+    return json.loads( raw )
+
+
+def doData():
+    ss = getServerStatus()
+    for k in ['started', 'finished']:
+        print( str(k) + ".value " + str(ss[k]) )
+
+def doConfig():
+
+    print "graph_title Gunicorn requests"
+    print "graph_args --base 1000 -l 0"
+    print "graph_vlabel requests / ${graph_period}"
+    print "graph_category gunicorn"
+
+    for k in ['started', 'finished']:
+        print k + ".label " + k
+        print k + ".min 0"
+        print k + ".type COUNTER"
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "config":
+        doConfig()
+    else:
+        doData()
+
