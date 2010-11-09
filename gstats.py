@@ -1,3 +1,23 @@
+# Copyright (c) 2010 Sabin Iacob <iacobs@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+#     The above copyright notice and this permission notice shall be included in
+#     all copies or substantial portions of the Software.
+# 
+#     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+#     THE SOFTWARE.
+
 import zmq
 import signal
 
@@ -140,20 +160,28 @@ class Application(object):
 
 
 def stop_collector(signum, frame):
-    sig = zmq_context.socket(zmq.PAIR)
+    sig = get_context.socket(zmq.PAIR)
     sig.connect('inproc://signals')
 
     sig.send(str(signum))
 
 
-if 'zmq_context' not in __builtins__:
-    __builtins__['zmq_context'] = zmq.Context()
+def context_factory():
+    context_store = []
+    def inner():
+        if not context_store:
+            context_store.append(zmq.Context())
+        return context_store[0]
 
-stats_collector = StatsCollector(zmq_context)
+    return inner
+
+get_context = context_factory()
+
+stats_collector = StatsCollector(get_context())
 stats_collector.start()
 
 # TODO find something that actually works here without waiting for zmq.select
 signal.signal(signal.SIGQUIT, stop_collector)
 signal.signal(signal.SIGTERM, stop_collector)
 
-app = Application(zmq_context)
+app = Application(get_context())
