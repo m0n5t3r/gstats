@@ -1,0 +1,25 @@
+# Stats gathering app for gunicorn
+
+This is a simple app able to gather stats from gunicorn and return them as a 
+JSON object; a munin plug-in to graph requests/second is also included
+
+## Requirements
+* you should be able to speak Python
+* gunicorn
+* pyzmq ([PPA for Ubuntu](https://launchpad.net/~chris-lea/+archive/zeromq))
+
+## Usage
+The app is pretty easy to use:
+
+    /gunicorn -b 127.0.0.1:8002 -w 1 gstats:app
+
+... and the results are available at `http://localhost:8002/_stats`
+
+Some things to be aware of:
+
+* Use **one and only one** static worker for gstats
+* Due to a bug in pyzmq, python will crash if you try to have more than one 
+zmq.Context active in the same interpreter. This means that **you cannot use 
+the supplied _gunicorn.conf.py_ to run gstats**, only use it to run your 
+actual apps
+
