@@ -28,9 +28,10 @@ class StopThread(Exception):
     pass
 
 class StatsCollector(Thread):
-    def __init__(self, zmq_context):
+    def __init__(self, zmq_context, bind_address):
         super(StatsCollector, self).__init__()
         self.ctx = zmq_context
+        delf.bind_address = bind_address
         self.reset_stats()
 
     def reset_stats(self):
@@ -69,7 +70,7 @@ class StatsCollector(Thread):
         comm = self.ctx.socket(zmq.PAIR)
         sig = self.ctx.socket(zmq.PAIR)
 
-        collector.bind('tcp://127.0.0.2:2345')
+        collector.bind(self.bind_address)
         comm.bind('inproc://comm')
         sig.bind('inproc://signals')
 
@@ -177,7 +178,7 @@ def context_factory():
 
 get_context = context_factory()
 
-stats_collector = StatsCollector(get_context())
+stats_collector = StatsCollector(get_context(), 'tcp://127.0.0.2:2345')
 stats_collector.start()
 
 # TODO find something that actually works here without waiting for zmq.select
