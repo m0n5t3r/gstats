@@ -40,10 +40,12 @@ def pre_request(worker, req):
 
     _collector.send('')
     _collector.recv()
-    requests[req] = datetime.now()
+    requests[hash(req)] = datetime.now()
 
 def post_request(worker, req):
     req_end = datetime.now()
+    req = hash(req)
+
     if req in requests:
         req_time = req_end - requests[req]
         req_time = req_time.seconds * 1000 + req_time.microseconds / 1000
