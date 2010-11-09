@@ -16,7 +16,7 @@ The app is pretty easy to use:
 * use the included gunicorn.conf.py as a template for your application's config 
 file (add the necessary settings, keeping the pre_request and post_request hooks)
 
-The results are available at `http://localhost:8002/_stats`
+The results are available at `http://localhost:8002/_status`
 
 Some things to be aware of:
 
