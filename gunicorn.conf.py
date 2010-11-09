@@ -56,5 +56,3 @@ def post_request(worker, req):
         _collector.send(str(req_time))
         _collector.recv()
 
-workers = 1
-
