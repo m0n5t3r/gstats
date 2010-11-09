@@ -10,7 +10,8 @@ JSON object; a munin plug-in to graph requests/second is also included
 
 ## Usage
 The app is pretty easy to use:
-* start gstats
+
+* start gstats:
     gunicorn -b 127.0.0.1:8002 -w 1 gstats:app
 * use the included gunicorn.conf.py as a template for your application's config 
 file (add the necessary settings, keeping the pre_request and post_request hooks)
