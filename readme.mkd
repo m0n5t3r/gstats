@@ -1,7 +1,9 @@
 # Stats gathering app for gunicorn
 
 This is a simple app able to gather stats from gunicorn and return them as a 
-JSON object; a munin plug-in to graph requests/second is also included
+JSON object; munin plug-ins to graph requests/second and average request time 
+are also included. Request times are calculated over the last 10 minutes by 
+default, but it's configurable (check the source).
 
 ## Requirements
 * you should be able to speak Python
