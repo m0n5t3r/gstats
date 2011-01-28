@@ -1,0 +1,66 @@
+#!/usr/bin/python
+
+import urllib2
+import sys
+import os
+import re
+
+try:
+    import json
+except ImportError:
+    import simplejson as json
+
+SLUG_UNFRIENDLY = re.compile(r'[^0-9a-z_]')
+
+def getServerStatus(munin_prefix):
+    status_url = os.environ.get('status_url', 'http://127.0.0.1:2345/_status')
+    raw = urllib2.urlopen(status_url).read()
+    
+    ss = json.loads(raw)
+    
+    for prefix, data in ss.items():
+        if re.sub(SLUG_UNFRIENDLY, '_', prefix.lower()) == munin_prefix:
+            return prefix, data['processing_time']
+
+    return None, None
+
+
+def doData(munin_prefix):
+    prefix, ss = getServerStatus(munin_prefix)
+    print 'avg_low.value %s' % (float(ss['avg']) - float(ss['std']))
+    print 'avg_std.value %s' % ss['std']
+    print 'avg.value %s' % ss['avg']
+
+
+def doConfig(munin_prefix):
+
+    prefix, ss = getServerStatus(munin_prefix)
+
+    print 'graph_title Gunicorn request time for %s' % prefix
+    print 'graph_args --base 1000 -l 0'
+    print 'graph_vlabel ms'
+    print 'graph_category gunicorn'
+
+    print 'avg_low.label low limit'
+    print 'avg_low.min 0'
+    print 'avg_low.type GAUGE'
+    print 'avg_low.draw AREA'
+    print 'avg_low.colour 00000000'
+
+    print 'avg_std.label standard deviation'
+    print 'avg_std.min 0'
+    print 'avg_std.type GAUGE'
+    print 'avg_std.draw STACK'
+    
+    print 'avg.label average'
+    print 'avg.min 0'
+    print 'avg.type GAUGE'
+    print 'avg.draw LINE2'
+
+if __name__ == '__main__':
+    munin_prefix = sys.argv[0].split('_', 1)[1]
+    if len(sys.argv) > 1 and sys.argv[1] == 'config':
+        doConfig(munin_prefix)
+    else:
+        doData(munin_prefix)
+
