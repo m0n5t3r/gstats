@@ -3,41 +3,49 @@
 import urllib2
 import sys
 import os
+import re
 
 try:
     import json
 except ImportError:
     import simplejson as json
 
+SLUG_UNFRIENDLY = re.compile(r'[^0-9a-z_]')
 
-def getServerStatus():
-    host = os.environ.get("host", "127.0.0.1")
-    port = 2345
-    raw = urllib2.urlopen( "http://%s:%d/_status" % (host, port) ).read()
-    return json.loads( raw )
+def getServerStatus(munin_prefix):
+    status_url = os.environ.get('status_url', 'http://127.0.0.1:2345/_status')
+    raw = urllib2.urlopen(status_url).read()
+    
+    ss = json.loads(raw)
+    
+    for prefix, data in ss.items():
+        if re.sub(SLUG_UNFRIENDLY, '_', prefix.lower()) == munin_prefix:
+            return prefix, data
 
+    return None, None
 
-def doData():
-    ss = getServerStatus()
+def doData(munin_prefix):
+    prefix, ss = getServerStatus(munin_prefix)
+    print 'started.value %s' % ss['started']
+    print 'finished.value %s' % ss['finished']
+
+def doConfig(munin_prefix):
+    prefix, ss = getServerStatus(munin_prefix)
+
+    print 'graph_title Gunicorn requests for %s' % prefix
+    print 'graph_args --base 1000 -l 0'
+    print 'graph_vlabel requests / ${graph_period}'
+    print 'graph_category gunicorn'
+
     for k in ['started', 'finished']:
-        print( str(k) + ".value " + str(ss[k]) )
+        print '%s.label' % k
+        print '%s.min 0' % k
+        print '%s.type DERIVE' % k
 
-def doConfig():
-
-    print "graph_title Gunicorn requests"
-    print "graph_args --base 1000 -l 0"
-    print "graph_vlabel requests / ${graph_period}"
-    print "graph_category gunicorn"
-
-    for k in ['started', 'finished']:
-        print k + ".label " + k
-        print k + ".min 0"
-        print k + ".type COUNTER"
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1 and sys.argv[1] == "config":
-        doConfig()
+if __name__ == '__main__':
+    munin_prefix = sys.argv[0].split('_', 1)[1]
+    if len(sys.argv) > 1 and sys.argv[1] == 'config':
+        doConfig(munin_prefix)
     else:
-        doData()
+        doData(munin_prefix)
 
