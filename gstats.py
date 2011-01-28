@@ -23,44 +23,96 @@ import signal
 
 from threading import Thread
 from math import sqrt
+from collections import defaultdict, deque
+from time import time
+
+class TimeRingBuffer(object):
+    """
+    Timed ring buffer: holds onjects passed in the last <interval> seconds
+    """
+    def __init__(self, interval):
+        """
+        :param interval: ring buffer's dimension (seconds)
+        :type interval: int
+        """
+        self.__size = interval
+        self.__things = deque()
+        self.__count = 0L
+
+    @property
+    def _current_timestamp(self):
+        return int(time())
+
+    @property
+    def values(self):
+        return [t[1] for t in self.__things]
+
+    @property
+    def count(self):
+        return self.__count
+
+    def __len__(self):
+        return len(self.__things)
+     
+    def append(self, val):
+        ts = self._current_timestamp
+        oldest = ts - self.__size
+
+        while self.__things and self.__things[0][0] < oldest:
+            self.__things.popleft()
+
+        self.__things.append((ts, val))
+        self.__count += 1
 
 class StopThread(Exception):
     pass
 
 class StatsCollector(Thread):
-    def __init__(self, zmq_context, bind_address):
+    def __init__(self, zmq_context, bind_address, buffer_length=600):
         super(StatsCollector, self).__init__()
         self.ctx = zmq_context
-        delf.bind_address = bind_address
+        self.bind_address = bind_address
+        self.buffer_length = buffer_length
         self.reset_stats()
 
     def reset_stats(self):
-        self.requests_started = 0
-        self.requests_finished = 0
-        self.request_time = 0
-        self.request_time_avg = 0
-        self.request_time_std = 0
+        self.stats = defaultdict(lambda: {
+            'started': TimeRingBuffer(self.buffer_length),
+            'finished': TimeRingBuffer(self.buffer_length)
+        })
 
-    def collect_stats(self, req_time):
+    def collect_stats(self, prefix='default', req_time=0):
+        stats = self.stats[prefix]
         if not req_time:
-            self.requests_started += 1
+            stats['started'].append(0)
         else:
-            self.requests_finished += 1
-            self.request_time += req_time
-            self.request_time_avg = float(self.request_time) / self.requests_finished
-            self.request_time_std += (req_time - self.request_time_avg) ** 2
+            stats['finished'].append(req_time)
 
     def assemble_stats(self):
-        return {
-            'started': self.requests_started,
-            'finished': self.requests_finished,
-            'processing': self.requests_started - self.requests_finished,
-            'processing_time': {
-                'avg': self.request_time_avg,
-                'std': sqrt(float(self.request_time_std) / float(self.requests_finished or 1)),
-                'total': self.request_time,
+        ret = {}
+
+        for prefix, data in self.stats.items():
+            started = data['started'].values
+            finished = data['finished'].values
+
+            finished_cnt = len(finished)
+
+            if finished_cnt < 1:
+                finished_cnt = 2
+
+            time_total = sum(finished)
+            time_avg = time_total / float(finished_cnt)
+
+            ret[prefix] = {
+                'started': data['started'].count,
+                'finished': data['finished'].count,
+                'processing_time': {
+                    'avg': time_avg,
+                    'std': sqrt(sum(((t - time_avg) ** 2 for t in finished)) / (finished_cnt - 1))
+                }
             }
-        }
+
+        return ret
 
     def die(self, *args):
         raise StopThread()
@@ -75,9 +127,12 @@ class StatsCollector(Thread):
         sig.bind('inproc://signals')
 
         def on_collector():
-            req_time = collector.recv()
+            prefix, req_time = collector.recv_multipart()
+
+            prefix = prefix or 'default'
             req_time = req_time and float(req_time) or 0
-            self.collect_stats(req_time)
+
+            self.collect_stats(prefix, req_time)
             collector.send('OK')
 
         def on_comm():
@@ -123,7 +178,6 @@ class StatsCollector(Thread):
         except StopThread:
             pass
 
-
 class Application(object):
     def __init__(self, zmq_context):
         self.ctx = zmq_context
@@ -161,7 +215,7 @@ class Application(object):
 
 
 def stop_collector(signum, frame):
-    sig = get_context.socket(zmq.PAIR)
+    sig = get_context().socket(zmq.PAIR)
     sig.connect('inproc://signals')
 
     sig.send(str(signum))

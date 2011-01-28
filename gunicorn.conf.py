@@ -38,7 +38,7 @@ def pre_request(worker, req):
     _collector = get_context().socket(zmq.REQ)
     _collector.connect('tcp://127.0.0.2:2345')
 
-    _collector.send('')
+    _collector.send_multipart(['my_app', ''])
     _collector.recv()
     requests[hash(req)] = datetime.now()
 
@@ -55,6 +55,6 @@ def post_request(worker, req):
         _collector = get_context().socket(zmq.REQ)
         _collector.connect('tcp://127.0.0.2:2345')
 
-        _collector.send(str(req_time))
+        _collector.send_multipart(['my_app', str(req_time)])
         _collector.recv()
 
