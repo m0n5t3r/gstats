@@ -34,9 +34,11 @@ def context_factory():
 
 get_context = context_factory()
 
+collector_addr = 'tcp://127.0.0.2:2345'
+
 def pre_request(worker, req):
     _collector = get_context().socket(zmq.REQ)
-    _collector.connect('tcp://127.0.0.2:2345')
+    _collector.connect(collector_addr)
 
     _collector.send_multipart(['my_app', ''])
     _collector.recv()
@@ -53,7 +55,7 @@ def post_request(worker, req):
         del requests[req]
         
         _collector = get_context().socket(zmq.REQ)
-        _collector.connect('tcp://127.0.0.2:2345')
+        _collector.connect(collector_addr)
 
         _collector.send_multipart(['my_app', str(req_time)])
         _collector.recv()
