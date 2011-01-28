@@ -98,7 +98,7 @@ class StatsCollector(Thread):
             finished_cnt = len(finished)
 
             if finished_cnt < 1:
-                finished_cnt = 2
+                finished_cnt = 1
 
             time_total = sum(finished)
             time_avg = time_total / float(finished_cnt)
@@ -108,7 +108,7 @@ class StatsCollector(Thread):
                 'finished': data['finished'].count,
                 'processing_time': {
                     'avg': time_avg,
-                    'std': sqrt(sum(((t - time_avg) ** 2 for t in finished)) / (finished_cnt - 1))
+                    'std': sqrt(sum(((t - time_avg) ** 2 for t in finished)) / finished_cnt)
                 }
             }
 
