@@ -38,7 +38,7 @@ def doConfig(munin_prefix):
     print 'graph_category gunicorn'
 
     for k in ['started', 'finished']:
-        print '%s.label' % k
+        print '%s.label %s' % (k, k)
         print '%s.min 0' % k
         print '%s.type DERIVE' % k
 
