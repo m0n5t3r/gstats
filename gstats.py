@@ -19,11 +19,12 @@
 #     THE SOFTWARE.
 
 import zmq
-import signal
+
 
 class Application(object):
-    def __init__(self, zmq_context):
+    def __init__(self, zmq_context, collectd_address):
         self.ctx = zmq_context
+        self.collectd_address = collectd_address
 
     def dispatch(self, env):
         """ very simple URL dispatch, a la Cake: /zelink maps to handle_zelink """
@@ -38,7 +39,7 @@ class Application(object):
 
     def handle__status(self, env):
         comm = self.ctx.socket(zmq.PAIR)
-        comm.connect('ipc://collectd_comm')
+        comm.connect(self.collectd_address)
 
         comm.send('GET')
         ret = comm.recv()
@@ -57,13 +58,6 @@ class Application(object):
         return ret
 
 
-def stop_collector(signum, frame):
-    sig = get_context().socket(zmq.PAIR)
-    sig.connect('ipc://collectd_signals')
-
-    sig.send(str(signum))
-
-
 def context_factory():
     context_store = []
     def inner():
@@ -75,8 +69,4 @@ def context_factory():
 
 get_context = context_factory()
 
-# TODO find something that actually works here without waiting for zmq.select
-signal.signal(signal.SIGQUIT, stop_collector)
-signal.signal(signal.SIGTERM, stop_collector)
-
-app = Application(get_context())
+app = Application(get_context(), 'tcp://127.0.0.1:2345')
