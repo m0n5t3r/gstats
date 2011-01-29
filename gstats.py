@@ -21,163 +21,6 @@
 import zmq
 import signal
 
-from threading import Thread
-from math import sqrt
-from collections import defaultdict, deque
-from time import time
-
-class TimeRingBuffer(object):
-    """
-    Timed ring buffer: holds onjects passed in the last <interval> seconds
-    """
-    def __init__(self, interval):
-        """
-        :param interval: ring buffer's dimension (seconds)
-        :type interval: int
-        """
-        self.__size = interval
-        self.__things = deque()
-        self.__count = 0L
-
-    @property
-    def _current_timestamp(self):
-        return int(time())
-
-    @property
-    def values(self):
-        return [t[1] for t in self.__things]
-
-    @property
-    def count(self):
-        return self.__count
-
-    def __len__(self):
-        return len(self.__things)
-     
-    def append(self, val):
-        ts = self._current_timestamp
-        oldest = ts - self.__size
-
-        while self.__things and self.__things[0][0] < oldest:
-            self.__things.popleft()
-
-        self.__things.append((ts, val))
-        self.__count += 1
-
-class StopThread(Exception):
-    pass
-
-class StatsCollector(Thread):
-    def __init__(self, zmq_context, bind_address, buffer_length=600):
-        super(StatsCollector, self).__init__()
-        self.ctx = zmq_context
-        self.bind_address = bind_address
-        self.buffer_length = buffer_length
-        self.reset_stats()
-
-    def reset_stats(self):
-        self.stats = defaultdict(lambda: {
-            'started': TimeRingBuffer(self.buffer_length),
-            'finished': TimeRingBuffer(self.buffer_length)
-        })
-
-    def collect_stats(self, prefix='default', req_time=0):
-        stats = self.stats[prefix]
-        if not req_time:
-            stats['started'].append(0)
-        else:
-            stats['finished'].append(req_time)
-
-    def assemble_stats(self):
-        ret = {}
-
-        for prefix, data in self.stats.items():
-            started = data['started'].values
-            finished = data['finished'].values
-
-            finished_cnt = len(finished)
-
-            if finished_cnt < 1:
-                finished_cnt = 1
-
-            time_total = sum(finished)
-            time_avg = time_total / float(finished_cnt)
-
-            ret[prefix] = {
-                'started': data['started'].count,
-                'finished': data['finished'].count,
-                'processing_time': {
-                    'avg': time_avg,
-                    'std': sqrt(sum(((t - time_avg) ** 2 for t in finished)) / finished_cnt)
-                }
-            }
-
-        return ret
-
-    def die(self, *args):
-        raise StopThread()
-
-    def run(self):
-        collector = self.ctx.socket(zmq.REP)
-        comm = self.ctx.socket(zmq.PAIR)
-        sig = self.ctx.socket(zmq.PAIR)
-
-        collector.bind(self.bind_address)
-        comm.bind('inproc://comm')
-        sig.bind('inproc://signals')
-
-        def on_collector():
-            prefix, req_time = collector.recv_multipart()
-
-            prefix = prefix or 'default'
-            req_time = req_time and float(req_time) or 0
-
-            self.collect_stats(prefix, req_time)
-            collector.send('OK')
-
-        def on_comm():
-            cmd = comm.recv()
-            if cmd not in commands:
-                comm.send('ERROR')
-                return
-
-            ret = commands[cmd]()
-            comm.send_json(ret)
-
-        def on_sig():
-            signum = int(sig.recv())
-
-            if sig not in signals:
-                return
-
-            signals[signum]()
-
-        commands = {
-            'GET': self.assemble_stats,
-        }
-
-        signals = {
-            signal.SIGQUIT: self.die,
-            signal.SIGTERM: self.die,
-            signal.SIGUSR1: self.reset_stats,
-        }
-
-        read_handlers  = {
-            collector: on_collector,
-            comm: on_comm,
-            sig: on_sig,
-        }
-
-        try:
-            while True:
-                r,w,x = zmq.select([collector, comm, sig], [collector, comm], [])
-
-                for s in r:
-                    read_handlers[s]()
-
-        except StopThread:
-            pass
-
 class Application(object):
     def __init__(self, zmq_context):
         self.ctx = zmq_context
@@ -195,7 +38,7 @@ class Application(object):
 
     def handle__status(self, env):
         comm = self.ctx.socket(zmq.PAIR)
-        comm.connect('inproc://comm')
+        comm.connect('ipc://collectd_comm')
 
         comm.send('GET')
         ret = comm.recv()
@@ -216,7 +59,7 @@ class Application(object):
 
 def stop_collector(signum, frame):
     sig = get_context().socket(zmq.PAIR)
-    sig.connect('inproc://signals')
+    sig.connect('ipc://collectd_signals')
 
     sig.send(str(signum))
 
@@ -231,9 +74,6 @@ def context_factory():
     return inner
 
 get_context = context_factory()
-
-stats_collector = StatsCollector(get_context(), 'tcp://127.0.0.2:2345')
-stats_collector.start()
 
 # TODO find something that actually works here without waiting for zmq.select
 signal.signal(signal.SIGQUIT, stop_collector)
