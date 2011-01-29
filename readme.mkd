@@ -1,28 +1,52 @@
-# Stats gathering app for gunicorn
+# Stats gathering thing for gunicorn
+## or, really, anything that supports custom pre_request and post_request hooks
 
-This is a simple app able to gather stats from gunicorn and return them as a 
-JSON object; munin plug-ins to graph requests/second and average request time 
-are also included. Request times are calculated over the last 10 minutes by 
-default, but it's configurable (check the source).
+This is a simple app able to gather stats from gunicorn (or similar) and return 
+them as a JSON object; munin plug-ins to graph requests/second and average request 
+time are also included. Request times are calculated over the last 10 minutes by 
+default, but it's configurable (see below).
 
 ## Requirements
-* you should be able to speak Python
+* you should be able to speak Python (for the hooks)
 * gunicorn
 * pyzmq ([PPA for Ubuntu](https://launchpad.net/~chris-lea/+archive/zeromq))
+* [optional] python-setproctitle for nice process names 
+  ([PPA for ubuntu](https://launchpad.net/~iacobs/+archive/ppa))
 
 ## Usage
-The app is pretty easy to use:
+    ./gstats-collectd -h
+	Usage: gstats-collectd [options]
 
-* start gstats:
+	Options:
+	  -h, --help            show this help message and exit
+	  -s ADDR, --stats-address=ADDR
+							set collector address to ADDR [tcp://127.0.0.2:2345]
+	  -c ADDR, --comm-address=ADDR
+							set communication address to ADDR
+							[tcp://127.0.0.1:2345]
+	  -l LENGTH, --buffer-length=LENGTH
+							compute average load times over the last LENGTH
+							seconds [600]
+
+	for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at
+	http://api.zeromq.org/zmq_connect.html)
+
+Use the included `gunicorn.conf.py` as an example for the `[pre/post]_request` hooks.
+The supplied munin plugins take an environment variable called `status_addr`, which 
+defaults to `tcp://127.0.0.1:2345` (the default communications address for collectd)
+
+The gstats.py contains a web interface that fetches the stats from gstats-collectd and 
+returns a JSON object; to use
+
+* start gstats-collectd
+* start gstats (edit to change the collector comms address if you need):
       gunicorn -b 127.0.0.1:8002 -w 1 gstats:app
-* use the included gunicorn.conf.py as a template for your application's config 
-file (add the necessary settings, keeping the pre_request and post_request hooks)
 
-The results are available at `http://localhost:8002/_status`
+The results should be available at `http://localhost:8002/_status`
 
 Some things to be aware of:
 
-* Use **one and only one** static worker for gstats
+* Only static workers are tested for gstats
 * Due to a bug in pyzmq, python will crash if you try to have more than one 
 zmq.Context active in the same interpreter. This means that **you cannot use 
 the supplied `gunicorn.conf.py` to run gstats**, only use it to run your 
