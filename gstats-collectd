@@ -27,6 +27,8 @@ from math import sqrt
 from collections import defaultdict, deque
 from time import time
 
+from optparse import OptionParser
+
 class StopThread(Exception):
     pass
 
@@ -70,9 +72,10 @@ class TimeRingBuffer(object):
 
 
 class StatsCollector(object):
-    def __init__(self, zmq_context, bind_address, buffer_length=600):
+    def __init__(self, zmq_context, collector_address='tcp://127.0.0.2:2345', comm_address='tcp://127.0.0.1:2345', buffer_length=600):
         self.ctx = zmq_context
-        self.bind_address = bind_address
+        self.collector_address = collector_address
+        self.comm_address = comm_address
         self.buffer_length = buffer_length
         self.reset_stats()
 
@@ -122,9 +125,9 @@ class StatsCollector(object):
         comm = self.ctx.socket(zmq.PAIR)
         sig = self.ctx.socket(zmq.PAIR)
 
-        collector.bind(self.bind_address)
-        comm.bind('ipc://collectd_comm')
-        sig.bind('ipc://collectd_signals')
+        collector.bind(self.collector_address)
+        comm.bind(self.comm_address)
+        sig.bind('inproc://signals')
 
         def on_collector():
             prefix, req_time = collector.recv_multipart()
@@ -180,7 +183,7 @@ class StatsCollector(object):
 
 def stop_collector(signum, frame):
     sig = get_context().socket(zmq.PAIR)
-    sig.connect('ipc://collectd_signals')
+    sig.connect('inproc://signals')
 
     sig.send(str(signum))
 
@@ -197,10 +200,24 @@ def context_factory():
 get_context = context_factory()
 
 if __name__ == '__main__':
-    stats_collector = StatsCollector(get_context(), 'tcp://127.0.0.2:2345')
-    stats_collector.run()
-
     # TODO find something that actually works here without waiting for zmq.select
     signal.signal(signal.SIGQUIT, stop_collector)
     signal.signal(signal.SIGTERM, stop_collector)
 
+    epilog = 'for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at http://api.zeromq.org/zmq_connect.html)'
+
+    parser = OptionParser(epilog=epilog)
+    parser.add_option('-s', '--stats-address', dest='collector', default='tcp://127.0.0.2:2345', help='set collector address to ADDR [%default]', metavar='ADDR')
+    parser.add_option('-c', '--comm-address', dest='comm', default='tcp://127.0.0.1:2345', help='set communication address to ADDR [%default]', metavar='ADDR')
+    parser.add_option('-l', '--buffer-length', dest='buflen', type='int', default=600, help='compute average load times over the last LENGTH seconds [%default]', metavar='LENGTH')
+
+    o, a = parser.parse_args()
+
+    try:
+        import setproctitle
+        setproctitle.setproctitle('gstats [stats collector collector=%s, comms=%s, buflen=%s]' % (o.collector, o.comm, o.buflen))
+    except ImportError:
+        pass
+
+    stats_collector = StatsCollector(get_context(), collector_address=o.collector, comm_address=o.comm, buffer_length=o.buflen)
+    stats_collector.run()
