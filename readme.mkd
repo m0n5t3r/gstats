@@ -1,5 +1,6 @@
-# Stats gathering thing for gunicorn
-## or, really, anything that supports custom pre_request and post_request hooks
+# Stats gathering thing for gunicorn 
+
+*... or, really, anything that supports custom pre_request and post_request hooks*
 
 This is a simple app able to gather stats from gunicorn (or similar) and return 
 them as a JSON object; munin plug-ins to graph requests/second and average request 
