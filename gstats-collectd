@@ -81,14 +81,14 @@ class StatsCollector(object):
 
     def reset_stats(self):
         self.stats = defaultdict(lambda: {
-            'started': TimeRingBuffer(self.buffer_length),
+            'started': 0L,
             'finished': TimeRingBuffer(self.buffer_length)
         })
 
     def collect_stats(self, prefix='default', req_time=0):
         stats = self.stats[prefix]
         if not req_time:
-            stats['started'].append(0)
+            stats['started'] += 1
         else:
             stats['finished'].append(req_time)
 
@@ -107,7 +107,7 @@ class StatsCollector(object):
             time_avg = time_total / float(finished_cnt)
 
             ret[prefix] = {
-                'started': data['started'].count,
+                'started': data['started'],
                 'finished': data['finished'].count,
                 'processing_time': {
                     'avg': time_avg,
