@@ -52,4 +52,8 @@ Some things to be aware of:
 zmq.Context active in the same interpreter. This means that **you cannot use 
 the supplied `gunicorn.conf.py` to run gstats**, only use it to run your 
 actual apps
+* Due to the way zeromq works, writes will block if collectd is down, which means your 
+application will hang; this may be fixed later by switching to an UDP socket for the 
+collector (since there's no need for actual 100% reliability), but I'm not convinced it's 
+worth the trouble for now
 
