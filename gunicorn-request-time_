@@ -12,7 +12,7 @@ ctx = zmq.Context()
 def getServerStatus(munin_prefix):
     status_addr = os.environ.get('status_addr', 'tcp://127.0.0.1:2345')
 
-    collector = ctx.socket(zmq.PAIR)
+    collector = ctx.socket(zmq.REQ)
     collector.connect(status_addr)
 
     collector.send('GET')
