@@ -226,7 +226,7 @@ if __name__ == '__main__':
 
     try:
         import setproctitle
-        setproctitle.setproctitle('gstats [stats collector collector=%s, comms=%s, buflen=%s]' % (o.collector, o.comm, o.buflen))
+        setproctitle.setproctitle('gstats [collector=%s, comms=%s, buflen=%s]' % (o.collector, o.comm, o.buflen))
     except ImportError:
         pass
 
