@@ -1,0 +1,134 @@
+#!/usr/bin/env python
+#
+# Copyright (c) 2010 Sabin Iacob <iacobs@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+#     The above copyright notice and this permission notice shall be included in
+#     all copies or substantial portions of the Software.
+# 
+#     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+#     IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+#     FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+#     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+#     LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+#     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+#     THE SOFTWARE.
+
+import zmq
+import optparse
+import inspect
+import time
+
+def context_factory():
+    context_store = []
+    def inner():
+        if not context_store:
+            context_store.append(zmq.Context())
+        return context_store[0]
+
+    return inner
+
+get_context = context_factory()
+
+COMMANDS = ['stats', 'rtimes', 'reset', 'quit']
+
+class NoSuchCommand(Exception):
+    pass
+
+class CommandError(Exception):
+    def __str__(self):
+        return str(self.args[0])
+
+class GStatsCommander(object):
+    context = zmq.Context()
+
+    def __init__(self):
+        self.addr = 'tcp://127.0.0.1:2345'
+
+    def __call__(self, cmd, *args):
+        handler = getattr(self, 'handle_%s' % cmd, None)
+        if handler is None:
+            raise NoSuchCommand()
+
+        handler_args = inspect.getargspec(handler).args[1:]
+
+        if len(handler_args) != len(args):
+            raise CommandError(handler.__doc__.strip())
+
+        return handler(*args)
+
+    @property
+    def commands(self):
+        return [x[0][7:] for x in inspect.getmembers(GStatsCommander) if x[0].startswith('handle')]
+
+    def set_address(self, addr):
+        self.addr = addr
+
+    def send_command(self, cmd, get_answer=True):
+        comm = self.context.socket(zmq.REQ)
+        comm.connect(self.addr)
+        comm.send(cmd.upper())
+
+        if get_answer:
+            return comm.recv_json()
+        else:
+            # No, Mr. Bond, I expect you to DIE!
+            # wait for the command to be delivered, exiting immediately will cause it to be dropped
+            time.sleep(0.1)
+
+        comm.close()
+
+    def handle_stats(self):
+        """ usage: %prog stats """
+        stats = self.send_command('stats')
+
+        for prefix, data in stats.items():
+            print prefix
+            print '=' * len(prefix)
+            print 'Requests: started=%s, finished=%s, processing=%s' % (data['started'], data['finished'], int(data['started']) - int(data['finished']))
+            print 'Response time: average=%s, stdev=%s' % (data['processing_time']['avg'], data['processing_time']['std'])
+            print ''
+
+    def handle_rtimes(self, prefix):
+        """ usage: %prog rtimes <prefix> """
+        rtimes = self.send_command('rtimes')
+
+        print '\n'.join(map(str, rtimes.get(prefix, [])))
+
+    def handle_reset(self):
+        """ usage: %prog reset """
+        self.send_command('reset')
+
+    def handle_quit(self):
+        """ usage: %prog quit """
+        self.send_command('quit', False)
+
+
+if __name__ == '__main__':
+
+    commander = GStatsCommander()
+
+    epilog = 'for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at http://api.zeromq.org/zmq_connect.html)'
+    usage = '%%prog [OPTIONS] <%s>' % '|'.join(commander.commands)
+
+    parser = optparse.OptionParser(usage=usage, epilog=epilog, prog='gstatsctl')
+    parser.add_option('-c', '--comm-address', dest='comm', default='tcp://127.0.0.1:2345', help='set communication address to ADDR [%default]', metavar='ADDR')
+    
+    opt, arg = parser.parse_args()
+
+    commander.set_address(opt.comm)
+
+    try:
+        commander(*arg)
+    except NoSuchCommand:
+        parser.print_help()
+        exit(1)
+    except CommandError, e:
+        print str(e).replace('%prog', parser.prog)
+        exit(2)
