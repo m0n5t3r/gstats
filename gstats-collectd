@@ -117,6 +117,14 @@ class StatsCollector(object):
 
         return ret
 
+    def request_times(self):
+        ret = {}
+
+        for prefix, data in self.stats.items():
+            ret[prefix] = data['finished'].values
+
+        return ret
+
     def die(self, *args):
         raise StopThread()
 
@@ -156,7 +164,10 @@ class StatsCollector(object):
             signals[signum]()
 
         commands = {
-            'GET': self.assemble_stats,
+            'STATS': self.assemble_stats,
+            'RTIMES': self.request_times,
+            'RESET': self.reset_stats,
+            'QUIT': self.die,
         }
 
         signals = {

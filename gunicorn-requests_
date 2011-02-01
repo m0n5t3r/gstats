@@ -15,7 +15,7 @@ def getServerStatus(munin_prefix):
     collector = ctx.socket(zmq.REQ)
     collector.connect(status_addr)
 
-    collector.send('GET')
+    collector.send('STATS')
     ss = collector.recv_json()
 
     for prefix, data in ss.items():
