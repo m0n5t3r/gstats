@@ -2,6 +2,8 @@
 
 *... or, really, anything that supports custom pre_request and post_request hooks*
 
+##TODO: update docs :)
+
 This is a simple app able to gather stats from gunicorn (or similar) and return 
 them as a JSON object; munin plug-ins to graph requests/second and average request 
 time are also included. Request times are calculated over the last 10 minutes by 
