@@ -19,7 +19,7 @@
 #     THE SOFTWARE.
 
 import zmq
-from datetime import datetime
+from time import time
 
 requests = {}
 
@@ -53,7 +53,7 @@ def start_request(req, collect=False, collector_addr='tcp://127.0.0.2:2345', pre
         collector.send_multipart([prefix, ''])
         collector.close()
 
-    requests[hash(req)] = datetime.now()
+    requests[hash(req)] = time()
 
 def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
     """
@@ -66,14 +66,14 @@ def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
     :param prefix: label under which to register the request (string, default my_app)
     """
 
-    req_end = datetime.now()
-    req = hash(req)
+    req_end = time()
+    hreq = hash(req)
 
-    if req in requests:
-        req_time = req_end - requests[req]
-        req_time = req_time.seconds * 1000 + req_time.microseconds / 1000
+    if hreq in requests:
+        req_time = req_end - requests[hreq]
+        req_time *= 1000
 
-        del requests[req]
+        del requests[hreq]
         
         collector = get_context().socket(zmq.PUSH)
 
