@@ -81,3 +81,5 @@ def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
         collector.send_multipart([prefix, str(req_time)])
         collector.close()()
 
+        return req_time
+
