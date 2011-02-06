@@ -34,7 +34,7 @@ def context_factory():
 
 get_context = context_factory()
 
-def start_request(req, collect=False, collector='tcp://127.0.0.2:2345', prefix='my_app'):
+def start_request(req, collect=False, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
     """
     register a request
 
@@ -42,27 +42,27 @@ def start_request(req, collect=False, collector='tcp://127.0.0.2:2345', prefix='
 
     :param req: request, can be mostly any hash-able object
     :param collect: whether to send the request started event to the collector (bool)
-    :param collector: collector address, in zeromq format (string, default tcp://127.0.0.2:2345)
+    :param collector_addr: collector address, in zeromq format (string, default tcp://127.0.0.2:2345)
     :param prefix: label under which to register the request (string, default my_app)
     """
 
     if collect:
-        _collector = get_context().socket(zmq.REQ)
-        _collector.connect(collector)
+        collector = get_context().socket(zmq.PUSH)
 
-        _collector.send_multipart([prefix, ''])
-        _collector.recv()
+        collector.connect(collector_addr)
+        collector.send_multipart([prefix, ''])
+        collector.close()
 
     requests[hash(req)] = datetime.now()
 
-def end_request(req, collector='tcp://127.0.0.2:2345', prefix='my_app'):
+def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
     """
     registers the end of a request
 
     registers the end of a request, computes elapsed time, sends it to the collector
 
     :param req: request, can be mostly any hash-able object
-    :param collector: collector address, in zeromq format (string, default tcp://127.0.0.2:2345)
+    :param collector_addr: collector address, in zeromq format (string, default tcp://127.0.0.2:2345)
     :param prefix: label under which to register the request (string, default my_app)
     """
 
@@ -75,9 +75,9 @@ def end_request(req, collector='tcp://127.0.0.2:2345', prefix='my_app'):
 
         del requests[req]
         
-        _collector = get_context().socket(zmq.REQ)
-        _collector.connect(collector)
+        collector = get_context().socket(zmq.PUSH)
 
-        _collector.send_multipart([prefix, str(req_time)])
-        _collector.recv()
+        collector.connect(collector_addr)
+        collector.send_multipart([prefix, str(req_time)])
+        collector.close()()
 

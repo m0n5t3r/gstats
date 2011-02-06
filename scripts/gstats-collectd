@@ -129,7 +129,7 @@ class StatsCollector(object):
         raise StopThread()
 
     def run(self):
-        collector = self.ctx.socket(zmq.REP)
+        collector = self.ctx.socket(zmq.PULL)
         comm = self.ctx.socket(zmq.REP)
         sig = self.ctx.socket(zmq.PAIR)
 
@@ -184,7 +184,7 @@ class StatsCollector(object):
 
         try:
             while True:
-                r,w,x = zmq.select([collector, comm, sig], [collector, comm], [])
+                r,w,x = zmq.select([collector, comm, sig], [comm], [])
 
                 for s in r:
                     read_handlers[s]()
