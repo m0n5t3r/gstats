@@ -41,7 +41,7 @@ class Application(object):
 
     def handle__status(self, env):
         comm = self.ctx.socket(zmq.REQ)
-        comm.connect(self.collectd_address)
+            comm.connect(self.gstats_addr)
 
         comm.send('GET')
         ret = comm.recv()
