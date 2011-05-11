@@ -41,9 +41,9 @@ class Application(object):
 
     def handle__status(self, env):
         comm = self.ctx.socket(zmq.REQ)
-            comm.connect(self.gstats_addr)
+        comm.connect(self.gstats_addr)
 
-        comm.send('GET')
+        comm.send('STATS')
         ret = comm.recv()
 
         comm.close()
@@ -70,7 +70,7 @@ def context_factory():
     return inner
 
 get_context = context_factory()
-gstats_control = os.environ.get('GSTATS_ADDR', 'tcp://127.0.0.1:2345')
+gstats_control = os.environ.get('GSTATS_COMMS_ADDR', 'tcp://127.0.0.1:2345')
 allowed_ips = os.environ.get('GSTATS_ALLOWED_IPS', '127.0.0.1').split(':')
 
 app = Application(get_context(), gstats_control, allowed_ips)
