@@ -7,7 +7,7 @@ except ImportError:
 
 config = {
     'name': 'gstats',
-    'version': '0.5',
+    'version': '0.6.0',
     'description': 'Flexible statistics gathering application, initially built for gunicorn (hence the g)',
     'author': 'Sabin Iacob',
     'author_email': 'iacobs+gst@m0n5t3r.info',
