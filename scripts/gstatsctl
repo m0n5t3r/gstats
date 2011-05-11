@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     parser = optparse.OptionParser(usage=usage, epilog=epilog, prog='gstatsctl')
     parser.add_option('-c', '--comm-address', dest='comm', default='tcp://127.0.0.1:2345', help='set communication address to ADDR [%default]', metavar='ADDR')
-    
+
     opt, arg = parser.parse_args()
 
     commander.set_address(opt.comm)
