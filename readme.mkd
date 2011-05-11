@@ -2,60 +2,98 @@
 
 *... or, really, anything that supports custom pre_request and post_request hooks*
 
-##TODO: update docs :)
+This is a simple app able to gather stats from gunicorn (or similar) and return
+them as a JSON object; you get:
+* `gstats-collectd` -- stats collecting daemon
+* `gstatsctl` -- provides a few handy commands to talk to the daemon and can serve 
+  as an example for your own code 
+* munin plug-ins to graph requests/second and average request, usable out of the
+  box or as a basis for your own code
+* a simple WSGI app that returns stats 
 
-This is a simple app able to gather stats from gunicorn (or similar) and return 
-them as a JSON object; munin plug-ins to graph requests/second and average request 
-time are also included. Request times are calculated over the last 10 minutes by 
-default, but it's configurable (see below).
+## Intended audience
+... is mostly developers with (more than) one foot in systems administration 
+looking to graph application parameters; if pretty graphs are your thing, you may
+find this useful
+
+## Packages
+* [Ubuntu PPA](https://launchpad.net/~iacobs/+archive/ppa) (Lucid / 10.04 LTS; if
+  needed, I'll add builds for Maverick and / or Natty as well)
+
+if anyone finds this useful enough to build packages for their distro of choice,
+contact me and I'll add the links here
 
 ## Requirements
 * you should be able to speak Python (for the hooks)
-* gunicorn
-* pyzmq ([PPA for Ubuntu](https://launchpad.net/~chris-lea/+archive/zeromq))
+* pyzmq ([PPA for Ubuntu](https://launchpad.net/~iacobs/+archive/zeromq))
 * [optional] python-setproctitle for nice process names 
   ([PPA for ubuntu](https://launchpad.net/~iacobs/+archive/ppa))
 
 ## Usage
-    ./gstats-collectd -h
-	Usage: gstats-collectd [options]
+    gstats-collectd -h
+    Usage: gstats-collectd [options]
 
-	Options:
-	  -h, --help            show this help message and exit
-	  -s ADDR, --stats-address=ADDR
-							set collector address to ADDR [tcp://127.0.0.2:2345]
-	  -c ADDR, --comm-address=ADDR
-							set communication address to ADDR
-							[tcp://127.0.0.1:2345]
-	  -l LENGTH, --buffer-length=LENGTH
-							compute average load times over the last LENGTH
-							seconds [600]
+    Options:
+      -h, --help            show this help message and exit
+      -s ADDR, --stats-address=ADDR
+                            set collector address to ADDR [tcp://127.0.0.2:2345]
+      -c ADDR, --comm-address=ADDR
+                            set communication address to ADDR
+                            [tcp://127.0.0.1:2345]
+      -l LENGTH, --buffer-length=LENGTH
+                            compute average load times over the last LENGTH
+                            seconds [600]
 
-	for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at
-	http://api.zeromq.org/zmq_connect.html)
+    for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at
+    http://api.zeromq.org/zmq_connect.html)
 
-Use the included `gunicorn.conf.py` as an example for the `[pre/post]_request` hooks.
-The supplied munin plugins take an environment variable called `status_addr`, which 
-defaults to `tcp://127.0.0.1:2345` (the default communications address for collectd)
+    gstatsctl -h
+    Usage: gstatsctl [OPTIONS] <quit|reset|rtimes|stats>
 
-The gstats.py contains a web interface that fetches the stats from gstats-collectd and 
-returns a JSON object; to use
+    Options:
+      -h, --help            show this help message and exit
+      -c ADDR, --comm-address=ADDR
+                            set communication address to ADDR
+                            [tcp://127.0.0.1:2345]
 
-* start gstats-collectd
-* start gstats (edit to change the collector comms address if you need):
-      gunicorn -b 127.0.0.1:8002 -w 1 gstats:app
+    for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at
+    http://api.zeromq.org/zmq_connect.html)
 
-The results should be available at `http://localhost:8002/_status`
+The simplest collecting code looks like this (examples/gunicorn.conf.py):
 
-Some things to be aware of:
+    from gstats import start_request, end_request
 
-* Only static workers are tested for gstats
-* Due to a bug in pyzmq, python will crash if you try to have more than one 
-zmq.Context active in the same interpreter. This means that **you cannot use 
-the supplied `gunicorn.conf.py` to run gstats**, only use it to run your 
-actual apps
-* Due to the way zeromq works, writes will block if collectd is down, which means your 
-application will hang; this may be fixed later by switching to an UDP socket for the 
-collector (since there's no need for actual 100% reliability), but I'm not convinced it's 
-worth the trouble for now
+    _collector_addr = 'tcp://127.0.0.2:2345'
 
+    def pre_request(req, worker):
+        start_request(req, collect=True, collector=_collector_addr, prefix='my_app')
+
+    def post_request(req, worker):
+        end_request(req, collector=_collector_addr, prefix='my_app')
+
+The included munin plug-ins are standard wildcard plug-ins; link `plugin_name_` to
+`/etc/munin/plugins/plugin_name_my-label` and reload munin-node; if you want to use 
+another address than the default, add an entry like this in 
+`/etc/munin/plugin-conf.d/munin-node`:
+
+    [gunicorn*]
+    user <my_user>
+    env.status_addr <zmq addr>
+
+The included WSGI application can be started with
+
+    gunicorn gstats.wsgi:app -b localhost:8002
+
+if you need to configure things, set the `GSTATS_COMM_ADDR` and / or
+`GSTATS_ALLOWED_IPS` environment variables before starting the web server; the 
+results should be available at `http://localhost:8002/_status`
+
+## One last thing
+Due to the way zeromq works, writes will block if collector is down, which means
+your application will hang; this may not be a problem if you use only post_request
+and maybe eventlet workers, because the user has already received the response;
+however, if a pre_request hangs the request won't even be processed.
+
+Also, this thing doesn't have tests because I have no idea what I could/should test.
+I will hopefully have sphinx documentation soon, though, so at least I hope to be a 
+good citizen in this respect :)
