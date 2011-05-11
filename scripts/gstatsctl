@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     try:
         commander(*arg)
-    except NoSuchCommand:
+    except (NoSuchCommand, TypeError):
         parser.print_help()
         exit(1)
     except CommandError, e:
