@@ -4,6 +4,7 @@
 
 This is a simple app able to gather stats from gunicorn (or similar) and return
 them as a JSON object; you get:
+
 * `gstats-collectd` -- stats collecting daemon
 * `gstatsctl` -- provides a few handy commands to talk to the daemon and can serve 
   as an example for your own code 
@@ -30,6 +31,8 @@ contact me and I'll add the links here
   ([PPA for ubuntu](https://launchpad.net/~iacobs/+archive/ppa))
 
 ## Usage
+The scripts:
+
     gstats-collectd -h
     Usage: gstats-collectd [options]
 
@@ -46,6 +49,8 @@ contact me and I'll add the links here
 
     for the format of ZeroMQ addresses, please refer to zmq_connect(3) (online at
     http://api.zeromq.org/zmq_connect.html)
+
+and
 
     gstatsctl -h
     Usage: gstatsctl [OPTIONS] <quit|reset|rtimes|stats>
