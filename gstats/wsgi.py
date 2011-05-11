@@ -19,12 +19,14 @@
 #     THE SOFTWARE.
 
 import zmq
+import os
 
 
 class Application(object):
-    def __init__(self, zmq_context, collectd_address):
+    def __init__(self, zmq_context, gstats_addr, allowed_ips=['127.0.0.1']):
         self.ctx = zmq_context
-        self.collectd_address = collectd_address
+        self.gstats_addr = gstats_addr
+        self.allowed_ips = allowed_ips
 
     def dispatch(self, env):
         """ very simple URL dispatch, a la Cake: /zelink maps to handle_zelink """
@@ -38,7 +40,7 @@ class Application(object):
         return handler(env)
 
     def handle__status(self, env):
-        comm = self.ctx.socket(zmq.PAIR)
+        comm = self.ctx.socket(zmq.REQ)
         comm.connect(self.collectd_address)
 
         comm.send('GET')
@@ -49,10 +51,10 @@ class Application(object):
         return '200 OK', [ret]
 
     def __call__(self, env, start_response):
-        if env['REMOTE_ADDR'] != '127.0.0.1':
+        if env['REMOTE_ADDR'] not in self.allowed_ips:
             start_response('403 Forbidden', [])
             return ['You are not allowed to see this!']
-        
+
         status, ret = self.dispatch(env)
         start_response(status, [])
         return ret
@@ -68,5 +70,7 @@ def context_factory():
     return inner
 
 get_context = context_factory()
+gstats_control = os.environ.get('GSTATS_ADDR', 'tcp://127.0.0.1:2345')
+allowed_ips = os.environ.get('GSTATS_ALLOWED_IPS', '127.0.0.1').split(':')
 
-app = Application(get_context(), 'tcp://127.0.0.1:2345')
+app = Application(get_context(), gstats_control, allowed_ips)
