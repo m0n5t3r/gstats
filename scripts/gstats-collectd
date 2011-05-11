@@ -59,7 +59,7 @@ class TimeRingBuffer(object):
 
     def __len__(self):
         return len(self.__things)
-     
+
     def append(self, val):
         ts = self._current_timestamp
         oldest = ts - self.__size
@@ -144,7 +144,6 @@ class StatsCollector(object):
             req_time = req_time and float(req_time) or 0
 
             self.collect_stats(prefix, req_time)
-            collector.send('OK')
 
         def on_comm():
             cmd = comm.recv()
