@@ -74,12 +74,12 @@ def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
         req_time *= 1000
 
         del requests[hreq]
-        
+
         collector = get_context().socket(zmq.PUSH)
 
         collector.connect(collector_addr)
         collector.send_multipart([prefix, str(req_time)])
-        collector.close()()
+        collector.close()
 
         return req_time
 
