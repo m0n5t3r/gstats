@@ -43,7 +43,7 @@ class TimeRingBuffer(object):
         """
         self.__size = interval
         self.__things = deque()
-        self.__count = 0L
+        self.__count = 0
 
     @property
     def _current_timestamp(self):
@@ -81,11 +81,11 @@ class StatsCollector(object):
 
     def reset_stats(self):
         self.stats = defaultdict(lambda: {
-            'started': 0L,
+            'started': 0,
             'finished': TimeRingBuffer(self.buffer_length)
         })
 
-    def collect_stats(self, prefix='default', req_time=0):
+    def collect_stats(self, prefix=b'default', req_time=0):
         stats = self.stats[prefix]
         if not req_time:
             stats['started'] += 1
@@ -106,7 +106,7 @@ class StatsCollector(object):
             time_total = sum(finished)
             time_avg = time_total / float(finished_cnt)
 
-            ret[prefix] = {
+            ret[prefix.decode()] = {
                 'started': data['started'],
                 'finished': data['finished'].count,
                 'processing_time': {
@@ -121,7 +121,7 @@ class StatsCollector(object):
         ret = {}
 
         for prefix, data in self.stats.items():
-            ret[prefix] = data['finished'].values
+            ret[prefix.decode()] = data['finished'].values
 
         return ret
 
@@ -140,18 +140,18 @@ class StatsCollector(object):
         def on_collector():
             prefix, req_time = collector.recv_multipart()
 
-            prefix = prefix or 'default'
+            prefix = prefix or b'default'
             req_time = req_time and float(req_time) or 0
 
             self.collect_stats(prefix, req_time)
 
         def on_comm():
             cmd = comm.recv()
-            if cmd not in commands:
-                comm.send('ERROR')
+            if cmd not in commands_b:
+                comm.send(b'ERROR')
                 return
 
-            ret = commands[cmd]()
+            ret = commands[cmd.decode()]()
             comm.send_json(ret)
 
         def on_sig():
@@ -162,6 +162,7 @@ class StatsCollector(object):
 
             signals[signum]()
 
+        commands_b = [b'STATS', b'RTIMES', b'QUIT', b'RESET']
         commands = {
             'STATS': self.assemble_stats,
             'RTIMES': self.request_times,
