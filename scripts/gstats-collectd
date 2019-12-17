@@ -43,7 +43,7 @@ class TimeRingBuffer(object):
         """
         self.__size = interval
         self.__things = deque()
-        self.__count = 0L
+        self.__count = 0
 
     @property
     def _current_timestamp(self):
@@ -81,7 +81,7 @@ class StatsCollector(object):
 
     def reset_stats(self):
         self.stats = defaultdict(lambda: {
-            'started': 0L,
+            'started': 0,
             'finished': TimeRingBuffer(self.buffer_length)
         })
 
