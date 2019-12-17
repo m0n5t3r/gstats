@@ -73,7 +73,7 @@ class GStatsCommander(object):
     def send_command(self, cmd, get_answer=True):
         comm = self.context.socket(zmq.REQ)
         comm.connect(self.addr)
-        comm.send(cmd.upper())
+        comm.send(str.encode(cmd.upper()))
 
         if get_answer:
             return comm.recv_json()
