@@ -147,7 +147,7 @@ class StatsCollector(object):
 
         def on_comm():
             cmd = comm.recv()
-            if cmd not in commands:
+            if cmd not in commands_b:
                 comm.send(b'ERROR')
                 return
 
@@ -162,11 +162,12 @@ class StatsCollector(object):
 
             signals[signum]()
 
+        commands_b = [b'STATS', b'RTIMES', b'QUIT'. b'RESET']
         commands = {
-            b'STATS': self.assemble_stats,
-            b'RTIMES': self.request_times,
-            b'RESET': self.reset_stats,
-            b'QUIT': self.die,
+            'STATS': self.assemble_stats,
+            'RTIMES': self.request_times,
+            'RESET': self.reset_stats,
+            'QUIT': self.die,
         }
 
         signals = {
