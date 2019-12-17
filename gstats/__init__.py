@@ -46,6 +46,7 @@ def start_request(req, collect=False, collector_addr='tcp://127.0.0.2:2345', pre
     :param prefix: label under which to register the request (string, default my_app)
     """
 
+    print("Starting req ", prefix, type(prefix))
     if collect:
         collector = get_context().socket(zmq.PUSH)
 
