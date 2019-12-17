@@ -151,7 +151,7 @@ class StatsCollector(object):
                 comm.send(b'ERROR')
                 return
 
-            ret = commands[cmd]()
+            ret = commands[cmd.decode()]()
             comm.send_json(ret)
 
         def on_sig():
