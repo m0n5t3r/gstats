@@ -85,7 +85,7 @@ class StatsCollector(object):
             'finished': TimeRingBuffer(self.buffer_length)
         })
 
-    def collect_stats(self, prefix='default', req_time=0):
+    def collect_stats(self, prefix=b'default', req_time=0):
         stats = self.stats[prefix]
         if not req_time:
             stats['started'] += 1
@@ -140,7 +140,7 @@ class StatsCollector(object):
         def on_collector():
             prefix, req_time = collector.recv_multipart()
 
-            prefix = prefix or 'default'
+            prefix = prefix or b'default'
             req_time = req_time and float(req_time) or 0
 
             self.collect_stats(prefix, req_time)
