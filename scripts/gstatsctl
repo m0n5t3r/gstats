@@ -129,6 +129,6 @@ if __name__ == '__main__':
     except (NoSuchCommand, TypeError):
         parser.print_help()
         exit(1)
-    except CommandError, e:
+    except CommandError as e:
         print (str(e).replace('%prog', parser.prog))
         exit(2)
