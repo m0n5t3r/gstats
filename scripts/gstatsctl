@@ -89,17 +89,17 @@ class GStatsCommander(object):
         stats = self.send_command('stats')
 
         for prefix, data in stats.items():
-            print prefix
-            print '=' * len(prefix)
-            print 'Requests: started=%s, finished=%s, processing=%s' % (data['started'], data['finished'], int(data['started']) - int(data['finished']))
-            print 'Response time: average=%s, stdev=%s' % (data['processing_time']['avg'], data['processing_time']['std'])
-            print ''
+            print(prefix)
+            print('=' * len(prefix))
+            print('Requests: started=%s, finished=%s, processing=%s' % (data['started'], data['finished'], int(data['started']) - int(data['finished'])))
+            print('Response time: average=%s, stdev=%s' % (data['processing_time']['avg'], data['processing_time']['std']))
+            print('')
 
     def handle_rtimes(self, prefix):
         """ usage: %prog rtimes <prefix> """
         rtimes = self.send_command('rtimes')
 
-        print '\n'.join(map(str, rtimes.get(prefix, [])))
+        print ('\n'.join(map(str, rtimes.get(prefix, []))))
 
     def handle_reset(self):
         """ usage: %prog reset """
@@ -130,5 +130,5 @@ if __name__ == '__main__':
         parser.print_help()
         exit(1)
     except CommandError, e:
-        print str(e).replace('%prog', parser.prog)
+        print (str(e).replace('%prog', parser.prog))
         exit(2)

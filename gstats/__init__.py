@@ -50,7 +50,7 @@ def start_request(req, collect=False, collector_addr='tcp://127.0.0.2:2345', pre
         collector = get_context().socket(zmq.PUSH)
 
         collector.connect(collector_addr)
-        collector.send_multipart([prefix, ''])
+        collector.send_multipart([str.encode(prefix), str.encode('')])
         collector.close()
 
     requests[hash(req)] = time()
@@ -78,7 +78,7 @@ def end_request(req, collector_addr='tcp://127.0.0.2:2345', prefix='my_app'):
         collector = get_context().socket(zmq.PUSH)
 
         collector.connect(collector_addr)
-        collector.send_multipart([prefix, str(req_time)])
+        collector.send_multipart([str.encode(prefix), str.encode(str(req_time))])
         collector.close()
 
         return req_time
