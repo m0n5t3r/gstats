@@ -162,7 +162,7 @@ class StatsCollector(object):
 
             signals[signum]()
 
-        commands_b = [b'STATS', b'RTIMES', b'QUIT'. b'RESET']
+        commands_b = [b'STATS', b'RTIMES', b'QUIT', b'RESET']
         commands = {
             'STATS': self.assemble_stats,
             'RTIMES': self.request_times,
